@@ -1,0 +1,82 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.2.0'
+    // Publishing to Maven Central via the Central Portal. This plugin auto-detects
+    // the Kotlin/JVM platform (from the applied kotlin.jvm plugin) and builds the
+    // sources + javadoc jars + signs + uploads — everything Central requires.
+    id 'com.vanniktech.maven.publish' version '0.37.0'
+}
+
+// Maven coordinate = tools.onelo:onelo-kotlin (reverse-DNS of onelo.tools, the
+// namespace verified on central.sonatype.com). `version` is the line the Publish
+// SDK / Release workflows grep, so keep the `version = '1.3.1'` shape.
+group = 'tools.onelo'
+version = '1.3.1'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+}
+
+// Java 17 (LTS), NOT 23. A Java-23 target needs JDK 23 on every build agent AND
+// forces every consumer onto JDK 23 — a non-starter for a library. 17 is the
+// broadly-supported floor (Android/backends run 17/21).
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+mavenPublishing {
+    // Central Portal (the OSSRH successor). Credentials + GPG come from
+    // mavenCentralUsername/Password + signingInMemoryKey* (set in CI as
+    // ORG_GRADLE_PROJECT_* env vars — never committed).
+    publishToMavenCentral()
+    signAllPublications()
+
+    coordinates(group.toString(), 'onelo-kotlin', version.toString())
+
+    pom {
+        name = 'Onelo Kotlin SDK'
+        description = 'Official Kotlin SDK for Onelo — auth, features, monitor, paywall, feedback, consent.'
+        url = 'https://github.com/onelo-tools/onelo-kotlin'
+        licenses {
+            license {
+                name = 'MIT License'
+                url = 'https://opensource.org/licenses/MIT'
+                distribution = 'repo'
+            }
+        }
+        developers {
+            developer {
+                id = 'onelo'
+                name = 'Onelo'
+                url = 'https://onelo.tools'
+            }
+        }
+        scm {
+            url = 'https://github.com/onelo-tools/onelo-kotlin'
+            connection = 'scm:git:git://github.com/onelo-tools/onelo-kotlin.git'
+            developerConnection = 'scm:git:ssh://git@github.com/onelo-tools/onelo-kotlin.git'
+        }
+    }
+}
